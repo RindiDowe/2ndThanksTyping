@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thanksgiving Sentence Typing (2nd Grade)</title>
+<style>
+  :root{
+    --bg: #fffaf3;
+    --card: #ffffff;
+    --ink: #1f2937;
+    --accent: #b45309;   /* pumpkin spice */
+    --accent-2:#065f46;  /* leafy green */
+    --muted:#6b7280;
+    --good:#065f46;
+    --bad:#b91c1c;
+    --focus:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    color:var(--ink); background: var(--bg);
+    display:flex; min-height:100dvh; align-items:center; justify-content:center;
+  }
+  .wrap{
+    width:min(920px, 94vw); padding: 20px;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;
+  }
+  .title{
+    font-weight:800; font-size: clamp(20px, 3vw, 28px);
+  }
+  .sub{
+    color:var(--muted); font-size: clamp(12px, 2.2vw, 14px);
+  }
+  .card{
+    background:var(--card); border-radius:18px; box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    padding:18px;
+  }
+  .toolbar{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:10px;
+  }
+  .level-badge{
+    background: #fde68a; color:#92400e; border-radius:999px; padding:6px 12px; font-weight:700;
+  }
+  .progress{
+    flex:1; height:12px; background:#f3f4f6; border-radius:999px; overflow:hidden; margin-left:10px;
+  }
+  .bar{height:100%; width:0%; background:linear-gradient(90deg, #f59e0b, #16a34a); transition:width .3s ease;}
+  .prompt{
+    font-size: clamp(16px, 2.6vw, 20px);
+    color:#374151; background:#fff7ed; border:1px dashed #fdba74; border-radius:12px; padding:12px 14px; margin:10px 0 8px;
+  }
+  .prompt .tag{
+    display:inline-flex; align-items:center; gap:6px; background:#ffedd5; color:#9a3412; padding:2px 8px; border-radius:999px; margin-right:8px; font-size:.85em; font-weight:700;
+  }
+  .input-area{
+    display:grid; gap:10px; margin-top:8px;
+  }
+  textarea{
+    width:100%; min-height:80px; resize:vertical; font-size: clamp(16px, 2.8vw, 20px);
+    padding:12px 14px; border-radius:12px; border:2px solid #e5e7eb; outline:none; line-height:1.5;
+  }
+  textarea:focus{ border-color: var(--focus); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+  .feedback{
+    min-height:22px; font-size: clamp(14px, 2.4vw, 16px); margin-top:-2px;
+  }
+  .good{color:var(--good); font-weight:700;}
+  .bad{color:var(--bad); font-weight:700;}
+  .hint{
+    font-size: .9em; color:var(--muted);
+  }
+  .diff{
+    display:inline-block; padding:0 3px; border-radius:4px; background:#fee2e2; color:#7f1d1d; font-weight:700;
+  }
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; margin-top:6px;
+  }
+  button{
+    border:0; border-radius:12px; padding:10px 14px; font-weight:800; cursor:pointer;
+    background:#111827; color:white;
+  }
+  button.secondary{ background:#e5e7eb; color:#111827; }
+  button.accent { background: var(--accent); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .chip{ background:#ecfeff; color:#0e7490; border:1px solid #a5f3fc; padding:4px 8px; border-radius:999px; font-size:.9em;}
+  .score{
+    display:flex; align-items:center; gap:10px; font-weight:800;
+  }
+  .stars{ letter-spacing:2px; }
+  footer{
+    margin-top:14px; color:var(--muted); font-size:13px; text-align:center;
+  }
+  /* Confetti */
+  .confetti{
+    position: fixed; inset:0; pointer-events:none; overflow:hidden;
+  }
+  .piece{
+    position:absolute; font-size:22px; animation: fall linear forwards; opacity:.95;
+  }
+  @keyframes fall{
+    to{ transform: translateY(110vh) rotate(720deg); opacity:.9;}
+  }
+  .celebrate{
+    text-align:center; padding:26px 14px; background:#ecfccb; border:2px solid #84cc16; border-radius:16px; margin-top:12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="title">🦃 Thanksgiving Sentence Typing</div>
+      <div class="sub">Fix the sentence (capitalize, add punctuation & commas), then type it correctly.</div>
+    </div>
+    <div class="score" id="scoreBox" aria-live="polite">
+      <span>Stars:</span> <span class="stars" id="stars">★★★</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="level-badge" id="levelName">Level 1 · Simple Sentences</div>
+      <div class="progress" aria-label="Progress"><div class="bar" id="bar"></div></div>
+    </div>
+
+    <div class="prompt" id="promptBox">
+      <span class="tag">needs fixing</span>
+      <span id="promptText">we eat turkey on thanksgiving</span>
+    </div>
+
+    <div class="chips" id="skillChips" aria-hidden="true">
+      <span class="chip">Capitalize first word</span>
+      <span class="chip">Add ending punctuation</span>
+      <span class="chip">Use commas in a list</span>
+      <span class="chip">Use 1 space between words</span>
+    </div>
+
+    <div class="input-area">
+      <label for="answer" class="sub"><strong>Your corrected sentence:</strong></label>
+      <textarea id="answer" autocomplete="off" spellcheck="false" aria-describedby="feedback"></textarea>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+      <div class="hint" id="hint"></div>
+      <div class="controls">
+        <button class="secondary" id="hintBtn" type="button">Hint</button>
+        <button class="secondary" id="revealBtn" type="button">Reveal</button>
+        <button class="accent" id="checkBtn" type="button">Check</button>
+        <button id="nextBtn" type="button" disabled>Next ➜</button>
+      </div>
+    </div>
+
+    <div id="celebrateBox" class="celebrate" hidden>
+      <div style="font-size:22px; font-weight:900;">🎉 Level Complete!</div>
+      <div>Great typing! You finished this level. Click <strong>Next Level</strong> to keep going.</div>
+      <div class="controls" style="justify-content:center; margin-top:10px;">
+        <button id="nextLevelBtn" class="accent" type="button">Next Level</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Tips: Encourage students to read aloud quietly, then fix capitals, commas in lists, and ending punctuation before typing.
+  </footer>
+</div>
+
+<div class="confetti" id="confetti"></div>
+
+<script>
+/* =========================
+   Data: prompts (needs fixing) and correct answers
+   ========================= */
+const LEVELS = [
+  {
+    name: "Level 1 · Simple Sentences",
+    description: "Basic capitalization + period",
+    rounds: [
+      { prompt: "we eat turkey on thanksgiving", answer: "We eat turkey on Thanksgiving." },
+      { prompt: "my family likes pumpkin pie", answer: "My family likes pumpkin pie." },
+      { prompt: "the leaves are red and gold", answer: "The leaves are red and gold." },
+      { prompt: "we say thank you for our food", answer: "We say thank you for our food." },
+      { prompt: "the corn smells good", answer: "The corn smells good." }
+    ]
+  },
+  {
+    name: "Level 2 · Add Punctuation",
+    description: "Add commas, ? and ! where needed",
+    rounds: [
+      { prompt: "mom dad and i baked a pie together", answer: "Mom, Dad, and I baked a pie together." },
+      { prompt: "can you pass the mashed potatoes", answer: "Can you pass the mashed potatoes?" },
+      { prompt: "we laughed sang and played games", answer: "We laughed, sang, and played games." },
+      { prompt: "happy thanksgiving everyone", answer: "Happy Thanksgiving, everyone!" },
+      { prompt: "oh no the turkey is too hot", answer: "Oh no, the turkey is too hot!" }
+    ]
+  },
+  {
+    name: "Level 3 · Longer Sentences",
+    description: "Commas in lists/clauses & compound sentences",
+    rounds: [
+      { prompt: "after dinner we played outside and the air was cool and crisp", answer: "After dinner, we played outside, and the air was cool and crisp." },
+      { prompt: "grandma baked cookies and everyone wanted one", answer: "Grandma baked cookies, and everyone wanted one." },
+      { prompt: "before we ate we said a prayer and shared what we were thankful for", answer: "Before we ate, we said a prayer and shared what we were thankful for." },
+      { prompt: "the table was full of turkey corn rolls and sweet potatoes", answer: "The table was full of turkey, corn, rolls, and sweet potatoes." },
+      { prompt: "my cousins helped me clean the dishes but we still made a mess", answer: "My cousins helped me clean the dishes, but we still made a mess!" }
+    ]
+  }
+];
+
+/* =========================
+   State
+   ========================= */
+let levelIndex = 0;
+let roundIndex = 0;
+let stars = 3;      // lose stars when using reveal/hints
+let levelCleared = false;
+
+/* =========================
+   DOM Refs
+   ========================= */
+const levelName = document.getElementById('levelName');
+const promptText = document.getElementById('promptText');
+const promptBox  = document.getElementById('promptBox');
+const answerEl   = document.getElementById('answer');
+const feedback   = document.getElementById('feedback');
+const hintEl     = document.getElementById('hint');
+const hintBtn    = document.getElementById('hintBtn');
+const revealBtn  = document.getElementById('revealBtn');
+const checkBtn   = document.getElementById('checkBtn');
+const nextBtn    = document.getElementById('nextBtn');
+const bar        = document.getElementById('bar');
+const starsEl    = document.getElementById('stars');
+const celebrateBox = document.getElementById('celebrateBox');
+const nextLevelBtn = document.getElementById('nextLevelBtn');
+const confettiLayer = document.getElementById('confetti');
+
+/* =========================
+   Helpers
+   ========================= */
+function updateUI(){
+  const L = LEVELS[levelIndex];
+  const R = L.rounds[roundIndex];
+  levelName.textContent = `${L.name}`;
+  promptText.textContent = R.prompt;
+  answerEl.value = "";
+  answerEl.focus();
+  feedback.textContent = "";
+  hintEl.textContent = "";
+  nextBtn.disabled = true;
+  levelCleared = false;
+  celebrateBox.hidden = true;
+
+  const total = L.rounds.length;
+  const done = roundIndex;
+  bar.style.width = `${(done/total)*100}%`;
+  starsEl.textContent = stars === 3 ? "★★★" : stars === 2 ? "★★☆" : stars === 1 ? "★☆☆" : "☆☆☆";
+}
+
+function firstDifference(a, b){
+  const len = Math.min(a.length, b.length);
+  for (let i=0;i<len;i++){
+    if (a[i] !== b[i]) return i;
+  }
+  if (a.length !== b.length) return len;
+  return -1; // identical
+}
+
+function showDiff(user, answer){
+  const idx = firstDifference(user, answer);
+  if (idx === -1){
+    feedback.innerHTML = `<span class="good">✅ Great! That matches.</span>`;
+    return;
+  }
+  const expectedChar = answer[idx] ?? "∅";
+  const userChar = user[idx] ?? "∅";
+  let message = `❌ Check the <strong>highlighted spot</strong>.`;
+  // craft a tiny “expected” hint
+  let extra = "";
+  if (expectedChar === " ") extra = " (a space is needed)";
+  else if (expectedChar === ",") extra = " (a comma is needed)";
+  else if (expectedChar === ".") extra = " (a period is needed)";
+  else if (expectedChar === "!") extra = " (an exclamation mark is needed)";
+  else if (expectedChar === "?") extra = " (a question mark is needed)";
+  else if (/[A-Z]/.test(expectedChar) && /[a-z]/.test(userChar || "")) extra = " (capitalize this letter)";
+  feedback.innerHTML = `<span class="bad">${message}${extra}</span>`;
+
+  // build a tiny visual showing around the error
+  const context = 8;
+  const start = Math.max(0, idx - context);
+  const end = Math.min(answer.length, idx + context);
+  const before = answer.slice(start, idx);
+  const highlight = answer.slice(idx, idx+1) || "∅";
+  const after = answer.slice(idx+1, end);
+  hintEl.innerHTML = `Expected around here: “${before}<span class="diff">${highlight}</span>${after}”`;
+}
+
+function celebrate(){
+  // DOM confetti using emoji
+  const EMOJIS = ["🍁","🍂","🦃","🥧","🌽","🍗","✨"];
+  const count = 90;
+  for (let i=0;i<count;i++){
+    const span = document.createElement('span');
+    span.className = 'piece';
+    span.textContent = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+    const startX = Math.random()*100; // vw
+    const delay = Math.random()*0.2;
+    const dur = 3 + Math.random()*1.8;
+    const drift = (Math.random()*40-20); // -20 to 20 vw
+    span.style.left = startX + 'vw';
+    span.style.top = '-6vh';
+    span.style.transform = `translateY(0) rotate(0deg)`;
+    span.style.animationDuration = dur+'s';
+    span.style.animationDelay = delay+'s';
+    span.animate(
+      [
+        { transform: `translate(0, -8vh) rotate(0deg)` , opacity:1 },
+        { transform: `translate(${drift}vw, 110vh) rotate(720deg)`, opacity:.95 }
+      ],
+      { duration: dur*1000, delay: delay*1000, easing:'linear', fill:'forwards' }
+    );
+    confettiLayer.appendChild(span);
+    setTimeout(()=>span.remove(), (dur+0.5)*1000);
+  }
+}
+
+/* =========================
+   Game flow
+   ========================= */
+function checkAnswer(){
+  const user = normalizeSpaces(answerEl.value);
+  const correct = LEVELS[levelIndex].rounds[roundIndex].answer;
+  const isMatch = user === correct;
+  showDiff(user, correct);
+
+  if (isMatch){
+    nextBtn.disabled = false;
+    feedback.innerHTML = `<span class="good">✅ Correct! Click “Next” to continue.</span>`;
+  }else{
+    nextBtn.disabled = true;
+  }
+}
+
+function nextRound(){
+  const L = LEVELS[levelIndex];
+  if (roundIndex < L.rounds.length - 1){
+    roundIndex++;
+    updateUI();
+  } else {
+    // level complete
+    levelCleared = true;
+    bar.style.width = '100%';
+    celebrateBox.hidden = false;
+    celebrate();
+  }
+}
+
+function nextLevel(){
+  if (levelIndex < LEVELS.length - 1){
+    levelIndex++;
+    roundIndex = 0;
+    stars = Math.max(1, stars); // carry over, but not zero
+    updateUI();
+  } else {
+    // game complete
+    celebrate();
+    celebrateBox.hidden = false;
+    celebrateBox.innerHTML = `
+      <div style="font-size:24px; font-weight:900;">🏆 You finished all levels!</div>
+      <div>Awesome typing! Happy Thanksgiving! 🦃</div>
+    `;
+  }
+}
+
+function giveHint(){
+  // reveal next correct character at the first mismatch by updating the student's text
+  const correct = LEVELS[levelIndex].rounds[roundIndex].answer;
+  let user = answerEl.value;
+  const idx = firstDifference(user, correct);
+  if (idx === -1){
+    feedback.innerHTML = `<span class="good">Already perfect—press “Next”.</span>`;
+    return;
+  }
+  // Pad user if needed so we can place the character
+  if (idx > user.length) user = user.padEnd(idx, ' ');
+  answerEl.value = user.slice(0, idx) + correct[idx] + user.slice(idx + 1);
+  answerEl.focus();
+  // soft penalty: first 2 hints free, then star reduces once
+  hintCount++;
+  if (hintCount === 3 && stars > 1){
+    stars--;
+    starsEl.textContent = stars === 3 ? "★★★" : stars === 2 ? "★★☆" : stars === 1 ? "★☆☆" : "☆☆☆";
+  }
+  checkAnswer();
+}
+
+function reveal(){
+  // reveal full correct sentence; costs a star (down to min 1)
+  const correct = LEVELS[levelIndex].rounds[roundIndex].answer;
+  answerEl.value = correct;
+  if (stars > 1) stars--;
+  starsEl.textContent = stars === 3 ? "★★★" : stars === 2 ? "★★☆" : stars === 1 ? "★☆☆" : "☆☆☆";
+  checkAnswer();
+}
+
+function normalizeSpaces(s){
+  // collapse multiple spaces into a single space, but we keep exact punctuation/case
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/* =========================
+   Events
+   ========================= */
+let hintCount = 0;
+checkBtn.addEventListener('click', checkAnswer);
+nextBtn.addEventListener('click', nextRound);
+nextLevelBtn.addEventListener('click', nextLevel);
+hintBtn.addEventListener('click', ()=>{ giveHint(); });
+revealBtn.addEventListener('click', ()=>{ reveal(); });
+
+answerEl.addEventListener('input', ()=>{
+  hintCount = 0; // reset per typing burst
+  checkAnswer();
+});
+answerEl.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)){ // Cmd/Ctrl+Enter to check
+    e.preventDefault(); checkAnswer();
+  }
+});
+
+/* =========================
+   Init
+   ========================= */
+updateUI();
+</script>
+</body>
+</html>
