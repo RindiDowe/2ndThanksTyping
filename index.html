@@ -68,12 +68,6 @@
   }
   .good{color:var(--good); font-weight:700;}
   .bad{color:var(--bad); font-weight:700;}
-  .hint{
-    font-size: .9em; color:var(--muted);
-  }
-  .diff{
-    display:inline-block; padding:0 3px; border-radius:4px; background:#fee2e2; color:#7f1d1d; font-weight:700;
-  }
   .controls{
     display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; margin-top:6px;
   }
@@ -142,10 +136,7 @@
       <label for="answer" class="sub"><strong>Your corrected sentence:</strong></label>
       <textarea id="answer" autocomplete="off" spellcheck="false" aria-describedby="feedback"></textarea>
       <div class="feedback" id="feedback" aria-live="polite"></div>
-      <div class="hint" id="hint"></div>
       <div class="controls">
-        <button class="secondary" id="hintBtn" type="button">Hint</button>
-        <button class="secondary" id="revealBtn" type="button">Reveal</button>
         <button class="accent" id="checkBtn" type="button">Check</button>
         <button id="nextBtn" type="button" disabled>Next ➜</button>
       </div>
@@ -212,7 +203,7 @@ const LEVELS = [
    ========================= */
 let levelIndex = 0;
 let roundIndex = 0;
-let stars = 3;      // lose stars when using reveal/hints
+let stars = 3;      // stars stay full since hints/reveals are removed
 let levelCleared = false;
 
 /* =========================
@@ -223,9 +214,6 @@ const promptText = document.getElementById('promptText');
 const promptBox  = document.getElementById('promptBox');
 const answerEl   = document.getElementById('answer');
 const feedback   = document.getElementById('feedback');
-const hintEl     = document.getElementById('hint');
-const hintBtn    = document.getElementById('hintBtn');
-const revealBtn  = document.getElementById('revealBtn');
 const checkBtn   = document.getElementById('checkBtn');
 const nextBtn    = document.getElementById('nextBtn');
 const bar        = document.getElementById('bar');
@@ -245,7 +233,6 @@ function updateUI(){
   answerEl.value = "";
   answerEl.focus();
   feedback.textContent = "";
-  hintEl.textContent = "";
   nextBtn.disabled = true;
   levelCleared = false;
   celebrateBox.hidden = true;
@@ -273,25 +260,15 @@ function showDiff(user, answer){
   }
   const expectedChar = answer[idx] ?? "∅";
   const userChar = user[idx] ?? "∅";
-  let message = `❌ Check the <strong>highlighted spot</strong>.`;
-  // craft a tiny “expected” hint
+  let message = `❌ Check your sentence again.`;
   let extra = "";
-  if (expectedChar === " ") extra = " (a space is needed)";
-  else if (expectedChar === ",") extra = " (a comma is needed)";
-  else if (expectedChar === ".") extra = " (a period is needed)";
-  else if (expectedChar === "!") extra = " (an exclamation mark is needed)";
-  else if (expectedChar === "?") extra = " (a question mark is needed)";
-  else if (/[A-Z]/.test(expectedChar) && /[a-z]/.test(userChar || "")) extra = " (capitalize this letter)";
+  if (expectedChar === " ") extra = " You may need a space.";
+  else if (expectedChar === ",") extra = " You may need a comma.";
+  else if (expectedChar === ".") extra = " You may need a period.";
+  else if (expectedChar === "!") extra = " You may need an exclamation mark.";
+  else if (expectedChar === "?") extra = " You may need a question mark.";
+  else if (/[A-Z]/.test(expectedChar) && /[a-z]/.test(userChar || "")) extra = " Make sure this letter is capitalized.";
   feedback.innerHTML = `<span class="bad">${message}${extra}</span>`;
-
-  // build a tiny visual showing around the error
-  const context = 8;
-  const start = Math.max(0, idx - context);
-  const end = Math.min(answer.length, idx + context);
-  const before = answer.slice(start, idx);
-  const highlight = answer.slice(idx, idx+1) || "∅";
-  const after = answer.slice(idx+1, end);
-  hintEl.innerHTML = `Expected around here: “${before}<span class="diff">${highlight}</span>${after}”`;
 }
 
 function celebrate(){
@@ -321,6 +298,11 @@ function celebrate(){
     confettiLayer.appendChild(span);
     setTimeout(()=>span.remove(), (dur+0.5)*1000);
   }
+}
+
+function normalizeSpaces(s){
+  // collapse multiple spaces into a single space, but we keep exact punctuation/case
+  return s.replace(/\s+/g, ' ').trim();
 }
 
 /* =========================
@@ -371,54 +353,14 @@ function nextLevel(){
   }
 }
 
-function giveHint(){
-  // reveal next correct character at the first mismatch by updating the student's text
-  const correct = LEVELS[levelIndex].rounds[roundIndex].answer;
-  let user = answerEl.value;
-  const idx = firstDifference(user, correct);
-  if (idx === -1){
-    feedback.innerHTML = `<span class="good">Already perfect—press “Next”.</span>`;
-    return;
-  }
-  // Pad user if needed so we can place the character
-  if (idx > user.length) user = user.padEnd(idx, ' ');
-  answerEl.value = user.slice(0, idx) + correct[idx] + user.slice(idx + 1);
-  answerEl.focus();
-  // soft penalty: first 2 hints free, then star reduces once
-  hintCount++;
-  if (hintCount === 3 && stars > 1){
-    stars--;
-    starsEl.textContent = stars === 3 ? "★★★" : stars === 2 ? "★★☆" : stars === 1 ? "★☆☆" : "☆☆☆";
-  }
-  checkAnswer();
-}
-
-function reveal(){
-  // reveal full correct sentence; costs a star (down to min 1)
-  const correct = LEVELS[levelIndex].rounds[roundIndex].answer;
-  answerEl.value = correct;
-  if (stars > 1) stars--;
-  starsEl.textContent = stars === 3 ? "★★★" : stars === 2 ? "★★☆" : stars === 1 ? "★☆☆" : "☆☆☆";
-  checkAnswer();
-}
-
-function normalizeSpaces(s){
-  // collapse multiple spaces into a single space, but we keep exact punctuation/case
-  return s.replace(/\s+/g, ' ').trim();
-}
-
 /* =========================
    Events
    ========================= */
-let hintCount = 0;
 checkBtn.addEventListener('click', checkAnswer);
 nextBtn.addEventListener('click', nextRound);
 nextLevelBtn.addEventListener('click', nextLevel);
-hintBtn.addEventListener('click', ()=>{ giveHint(); });
-revealBtn.addEventListener('click', ()=>{ reveal(); });
 
 answerEl.addEventListener('input', ()=>{
-  hintCount = 0; // reset per typing burst
   checkAnswer();
 });
 answerEl.addEventListener('keydown', (e)=>{
